@@ -1,6 +1,9 @@
 // Frontend logic for ADT Partners Shipment Management Prototype
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL =
+  window.location.hostname === 'localhost'
+    ? 'http://localhost:3001/api'
+    : 'https://adt-intern-prototype-for-businesscontrol.onrender.com/api';
 const requiredFields = [
   'shipmentId',
   'productType',
