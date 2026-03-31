@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>ADT Partners – Shipment Management Prototype</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="top-bar">
+      <div class="top-bar-content">
+        <h1>ADT Partners Internal System</h1>
+        <p>Shipment Management Module</p>
+      </div>
+    </header>
+
+    <main class="page-container">
+      <div id="message" class="message" role="status"></div>
+
+      <section class="form-section">
+        <h2>Shipment Form</h2>
+        <form id="shipment-form" novalidate>
+          <div class="form-grid">
+            <div class="form-row">
+              <label for="shipmentId">Shipment ID *</label>
+              <input type="text" id="shipmentId" name="shipmentId" placeholder="e.g. SH-006" />
+              <small class="input-error" data-error-for="shipmentId"></small>
+            </div>
+
+            <div class="form-row">
+              <label for="productType">Product Type *</label>
+              <input type="text" id="productType" name="productType" placeholder="e.g. Wheat" />
+              <small class="input-error" data-error-for="productType"></small>
+            </div>
+
+            <div class="form-row">
+              <label for="grade">Grade *</label>
+              <input type="text" id="grade" name="grade" placeholder="e.g. Milling" />
+              <small class="input-error" data-error-for="grade"></small>
+            </div>
+
+            <div class="form-row">
+              <label for="quantityTons">Quantity (tons) *</label>
+              <input type="number" id="quantityTons" name="quantityTons" min="1" step="1" />
+              <small class="input-error" data-error-for="quantityTons"></small>
+            </div>
+
+            <div class="form-row">
+              <label for="originCountry">Origin Country *</label>
+              <input type="text" id="originCountry" name="originCountry" placeholder="e.g. Kazakhstan" />
+              <small class="input-error" data-error-for="originCountry"></small>
+            </div>
+
+            <div class="form-row">
+              <label for="destinationCountry">Destination Country *</label>
+              <input
+                type="text"
+                id="destinationCountry"
+                name="destinationCountry"
+                placeholder="e.g. Italy"
+              />
+              <small class="input-error" data-error-for="destinationCountry"></small>
+            </div>
+
+            <div class="form-row">
+              <label for="portDeparture">Port Departure *</label>
+              <input type="text" id="portDeparture" name="portDeparture" placeholder="e.g. Aktau" />
+              <small class="input-error" data-error-for="portDeparture"></small>
+            </div>
+
+            <div class="form-row">
+              <label for="portArrival">Port Arrival *</label>
+              <input type="text" id="portArrival" name="portArrival" placeholder="e.g. Genoa" />
+              <small class="input-error" data-error-for="portArrival"></small>
+            </div>
+
+            <div class="form-row">
+              <label for="vesselName">Vessel Name *</label>
+              <input type="text" id="vesselName" name="vesselName" placeholder="e.g. MV Black Sea" />
+              <small class="input-error" data-error-for="vesselName"></small>
+            </div>
+
+            <div class="form-row">
+              <label for="shipmentDate">Shipment Date *</label>
+              <input type="date" id="shipmentDate" name="shipmentDate" />
+              <small class="input-error" data-error-for="shipmentDate"></small>
+            </div>
+
+            <div class="form-row">
+              <label for="status">Status *</label>
+              <select id="status" name="status">
+                <option value="">Select status</option>
+                <option value="Draft">Draft</option>
+                <option value="Planned">Planned</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+              </select>
+              <small class="input-error" data-error-for="status"></small>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button id="submit-button" type="submit">Add Shipment</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="table-section">
+        <div class="table-header">
+          <h2>Shipment Table</h2>
+          <input
+            id="search-input"
+            class="search-input"
+            type="text"
+            placeholder="Search by destination, product, or vessel..."
+          />
+        </div>
+        <p id="loading-text" class="loading-text">Loading shipments...</p>
+        <div class="table-wrap">
+          <table id="shipments-table">
+            <thead>
+              <tr>
+                <th>Shipment ID</th>
+                <th>Product Type</th>
+                <th>Grade</th>
+                <th id="sort-quantity" class="sortable-header">Quantity (tons)</th>
+                <th>Origin</th>
+                <th>Destination</th>
+                <th>Port Departure</th>
+                <th>Port Arrival</th>
+                <th>Vessel Name</th>
+                <th id="sort-date" class="sortable-header">Shipment Date</th>
+                <th>Status</th>
+                <th>Edit</th>
+                <th>Delete</th>
+              </tr>
+            </thead>
+            <tbody id="shipments-body">
+              <!-- Rows will be populated by app.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
+
