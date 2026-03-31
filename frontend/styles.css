@@ -235,6 +235,11 @@ th {
   color: #0c4a6e;
 }
 
+.grain-icon {
+  text-align: center;
+  font-size: 1rem;
+}
+
 @media (min-width: 900px) {
   .form-grid {
     grid-template-columns: 1fr 1fr;

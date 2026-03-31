@@ -74,6 +74,14 @@ function getStatusClass(status) {
   return 'status-planned';
 }
 
+function getProductIcon(productType) {
+  const value = (productType || '').toLowerCase();
+  if (value.includes('corn')) return '🌽';
+  if (value.includes('barley')) return '🌱';
+  if (value.includes('wheat')) return '🌾';
+  return '🌾';
+}
+
 // fetchShipments(): get data from backend and render
 async function fetchShipments() {
   const loadingEl = document.getElementById('loading-text');
@@ -100,7 +108,7 @@ function renderTable(shipments) {
 
   if (shipments.length === 0) {
     const tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="13">No shipments found.</td>';
+    tr.innerHTML = '<td colspan="14">No shipments found.</td>';
     tbody.appendChild(tr);
     return;
   }
@@ -111,6 +119,7 @@ function renderTable(shipments) {
 
     tr.innerHTML = `
       <td>${shipment.shipmentId}</td>
+      <td class="grain-icon">${getProductIcon(shipment.productType)}</td>
       <td>${shipment.productType}</td>
       <td>${shipment.grade}</td>
       <td>${shipment.quantityTons}</td>
