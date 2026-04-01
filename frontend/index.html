@@ -16,6 +16,45 @@
     <main class="page-container">
       <div id="message" class="message" role="status"></div>
 
+      <section class="access-section">
+        <h2>User Access (Prototype)</h2>
+        <div class="access-grid">
+          <div class="form-row">
+            <label for="role-select">Role</label>
+            <select id="role-select">
+              <option value="boss">Boss</option>
+              <option value="manager" selected>Manager</option>
+              <option value="worker">Worker</option>
+            </select>
+          </div>
+          <div class="form-row">
+            <label for="username-input">Username</label>
+            <input id="username-input" type="text" placeholder="e.g. manager1" value="manager1" />
+          </div>
+          <div class="form-actions">
+            <button id="apply-user-button" type="button">Apply User</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="summary-section">
+        <h2>Overview</h2>
+        <div class="summary-grid">
+          <div class="summary-card">
+            <p>Total Visible Shipments</p>
+            <strong id="summary-count">0</strong>
+          </div>
+          <div class="summary-card">
+            <p>Total Sales (USD)</p>
+            <strong id="summary-sales">$0</strong>
+          </div>
+          <div class="summary-card">
+            <p>Estimated Profit (USD)</p>
+            <strong id="summary-profit">$0</strong>
+          </div>
+        </div>
+      </section>
+
       <section class="form-section">
         <h2>Shipment Form</h2>
         <form id="shipment-form" novalidate>
@@ -96,6 +135,24 @@
               </select>
               <small class="input-error" data-error-for="status"></small>
             </div>
+
+            <div class="form-row">
+              <label for="saleAmountUsd">Sale Amount (USD)</label>
+              <input type="number" id="saleAmountUsd" name="saleAmountUsd" min="0" step="0.01" />
+              <small class="input-error" data-error-for="saleAmountUsd"></small>
+            </div>
+
+            <div class="form-row">
+              <label for="estimatedProfitUsd">Estimated Profit (USD)</label>
+              <input
+                type="number"
+                id="estimatedProfitUsd"
+                name="estimatedProfitUsd"
+                min="0"
+                step="0.01"
+              />
+              <small class="input-error" data-error-for="estimatedProfitUsd"></small>
+            </div>
           </div>
 
           <div class="form-actions">
@@ -120,6 +177,7 @@
             <thead>
               <tr>
                 <th>Shipment ID</th>
+                <th>Created By</th>
                 <th>Icon</th>
                 <th>Product Type</th>
                 <th>Grade</th>
@@ -130,6 +188,8 @@
                 <th>Port Arrival</th>
                 <th>Vessel Name</th>
                 <th id="sort-date" class="sortable-header">Shipment Date</th>
+                <th>Sale (USD)</th>
+                <th>Profit (USD)</th>
                 <th>Status</th>
                 <th>Edit</th>
                 <th>Delete</th>

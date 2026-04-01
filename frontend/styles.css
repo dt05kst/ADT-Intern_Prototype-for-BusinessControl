@@ -40,7 +40,9 @@ body {
 }
 
 .form-section,
-.table-section {
+.table-section,
+.access-section,
+.summary-section {
   background: #ffffff;
   border: 1px solid #dbe1ea;
   border-radius: 8px;
@@ -131,6 +133,36 @@ h2 {
   cursor: pointer;
 }
 
+.access-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px 14px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.summary-card {
+  border: 1px solid #dbe1ea;
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #f8fafc;
+}
+
+.summary-card p {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.summary-card strong {
+  font-size: 1rem;
+  color: #0f2f56;
+}
+
 .form-actions button:hover {
   background-color: #134277;
 }
@@ -207,6 +239,11 @@ th {
   background-color: #dc2626;
 }
 
+.row-button:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
 .status-badge {
   display: inline-block;
   padding: 3px 8px;
@@ -243,6 +280,15 @@ th {
 @media (min-width: 900px) {
   .form-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .access-grid {
+    grid-template-columns: 1fr 1fr auto;
+    align-items: end;
+  }
+
+  .summary-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 

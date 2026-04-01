@@ -22,6 +22,22 @@ let allShipments = [];
 let filteredShipments = [];
 let editingShipmentId = null;
 let currentSort = { field: null, direction: 'asc' };
+let currentUser = {
+  role: localStorage.getItem('adtRole') || 'manager',
+  name: localStorage.getItem('adtUserName') || 'manager1'
+};
+
+function getAuthHeaders() {
+  return {
+    'x-user-role': currentUser.role,
+    'x-user-name': currentUser.name
+  };
+}
+
+function formatMoney(value) {
+  const number = Number(value) || 0;
+  return `$${number.toLocaleString()}`;
+}
 
 // Show top message box and auto-hide it
 function showMessage(text, type = 'info') {
@@ -82,13 +98,20 @@ function getProductIcon(productType) {
   return '🌾';
 }
 
+function canModifyRow(shipment) {
+  if (currentUser.role === 'boss') return true;
+  return shipment.createdBy === currentUser.name;
+}
+
 // fetchShipments(): get data from backend and render
 async function fetchShipments() {
   const loadingEl = document.getElementById('loading-text');
   loadingEl.style.display = 'block';
 
   try {
-    const response = await fetch(`${API_BASE_URL}/shipments`);
+    const response = await fetch(`${API_BASE_URL}/shipments`, {
+      headers: getAuthHeaders()
+    });
     if (!response.ok) throw new Error('Failed to fetch shipments');
 
     allShipments = await response.json();
@@ -108,17 +131,19 @@ function renderTable(shipments) {
 
   if (shipments.length === 0) {
     const tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="14">No shipments found.</td>';
+    tr.innerHTML = '<td colspan="17">No shipments found.</td>';
     tbody.appendChild(tr);
     return;
   }
 
   shipments.forEach((shipment) => {
     const statusClass = getStatusClass(shipment.status);
+    const editable = canModifyRow(shipment);
     const tr = document.createElement('tr');
 
     tr.innerHTML = `
       <td>${shipment.shipmentId}</td>
+      <td>${shipment.createdBy || '-'}</td>
       <td class="grain-icon">${getProductIcon(shipment.productType)}</td>
       <td>${shipment.productType}</td>
       <td>${shipment.grade}</td>
@@ -129,15 +154,27 @@ function renderTable(shipments) {
       <td>${shipment.portArrival}</td>
       <td>${shipment.vesselName}</td>
       <td>${shipment.shipmentDate}</td>
+      <td>${formatMoney(shipment.saleAmountUsd)}</td>
+      <td>${formatMoney(shipment.estimatedProfitUsd)}</td>
       <td><span class="status-badge ${statusClass}">${shipment.status}</span></td>
-      <td><button class="row-button edit-button" data-id="${shipment.shipmentId}">Edit</button></td>
-      <td><button class="row-button delete-button" data-id="${shipment.shipmentId}">Delete</button></td>
+      <td><button class="row-button edit-button" data-id="${shipment.shipmentId}" ${editable ? '' : 'disabled'}>Edit</button></td>
+      <td><button class="row-button delete-button" data-id="${shipment.shipmentId}" ${editable ? '' : 'disabled'}>Delete</button></td>
     `;
 
     tbody.appendChild(tr);
   });
 
+  updateSummary(shipments);
   bindRowActionButtons();
+}
+
+function updateSummary(shipments) {
+  const totalSales = shipments.reduce((sum, s) => sum + Number(s.saleAmountUsd || 0), 0);
+  const totalProfit = shipments.reduce((sum, s) => sum + Number(s.estimatedProfitUsd || 0), 0);
+
+  document.getElementById('summary-count').textContent = shipments.length.toString();
+  document.getElementById('summary-sales').textContent = formatMoney(totalSales);
+  document.getElementById('summary-profit').textContent = formatMoney(totalProfit);
 }
 
 function applyFilterAndSort() {
@@ -192,6 +229,8 @@ function setFormData(shipment) {
   document.getElementById('vesselName').value = shipment.vesselName;
   document.getElementById('shipmentDate').value = shipment.shipmentDate;
   document.getElementById('status').value = shipment.status;
+  document.getElementById('saleAmountUsd').value = shipment.saleAmountUsd || '';
+  document.getElementById('estimatedProfitUsd').value = shipment.estimatedProfitUsd || '';
 }
 
 function resetFormState() {
@@ -204,7 +243,9 @@ function resetFormState() {
 // handleEdit(): populate form from selected row
 async function handleEdit(id) {
   try {
-    const response = await fetch(`${API_BASE_URL}/shipments/${id}`);
+    const response = await fetch(`${API_BASE_URL}/shipments/${id}`, {
+      headers: getAuthHeaders()
+    });
     if (!response.ok) {
       showMessage('Could not load shipment for editing.', 'error');
       return;
@@ -227,7 +268,10 @@ async function handleDelete(id) {
   if (!confirmed) return;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/shipments/${id}`, { method: 'DELETE' });
+    const response = await fetch(`${API_BASE_URL}/shipments/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
     if (!response.ok) {
       showMessage('Failed to delete shipment.', 'error');
       return;
@@ -277,7 +321,7 @@ async function handleSubmit(event) {
   try {
     const response = await fetch(requestUrl, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
       body: JSON.stringify(payload)
     });
 
@@ -307,6 +351,21 @@ async function handleSubmit(event) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('role-select').value = currentUser.role;
+  document.getElementById('username-input').value = currentUser.name;
+  document.getElementById('apply-user-button').addEventListener('click', () => {
+    const role = document.getElementById('role-select').value;
+    const name = document.getElementById('username-input').value.trim().toLowerCase() || 'guest';
+    currentUser = { role, name };
+
+    localStorage.setItem('adtRole', role);
+    localStorage.setItem('adtUserName', name);
+
+    resetFormState();
+    showMessage(`Access applied: ${role} (${name})`, 'info');
+    fetchShipments();
+  });
+
   document.getElementById('shipment-form').addEventListener('submit', handleSubmit);
   document.getElementById('search-input').addEventListener('input', applyFilterAndSort);
   document.getElementById('sort-date').addEventListener('click', () => toggleSort('shipmentDate'));

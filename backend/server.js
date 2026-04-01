@@ -25,7 +25,10 @@ let shipments = [
     portArrival: 'Genoa',
     vesselName: 'MV Black Sea',
     shipmentDate: '2025-02-05',
-    status: 'Planned'
+    status: 'Planned',
+    saleAmountUsd: 6000000,
+    estimatedProfitUsd: 875000,
+    createdBy: 'manager1'
   },
   {
     shipmentId: 'SH-002',
@@ -38,7 +41,10 @@ let shipments = [
     portArrival: 'Valencia',
     vesselName: 'MV Atlas',
     shipmentDate: '2025-02-10',
-    status: 'In Progress'
+    status: 'In Progress',
+    saleAmountUsd: 4255000,
+    estimatedProfitUsd: 555000,
+    createdBy: 'manager1'
   },
   {
     shipmentId: 'SH-003',
@@ -51,7 +57,10 @@ let shipments = [
     portArrival: 'Mersin',
     vesselName: 'MV Horizon',
     shipmentDate: '2025-02-14',
-    status: 'Planned'
+    status: 'Planned',
+    saleAmountUsd: 2580000,
+    estimatedProfitUsd: 384000,
+    createdBy: 'worker1'
   },
   {
     shipmentId: 'SH-004',
@@ -64,7 +73,10 @@ let shipments = [
     portArrival: 'Rotterdam',
     vesselName: 'MV North Star',
     shipmentDate: '2025-02-20',
-    status: 'Draft'
+    status: 'Draft',
+    saleAmountUsd: 7350000,
+    estimatedProfitUsd: 1095000,
+    createdBy: 'manager2'
   },
   {
     shipmentId: 'SH-005',
@@ -77,22 +89,56 @@ let shipments = [
     portArrival: 'Piraeus',
     vesselName: 'MV Blue Wave',
     shipmentDate: '2025-02-25',
-    status: 'Planned'
+    status: 'Planned',
+    saleAmountUsd: 3071250,
+    estimatedProfitUsd: 441000,
+    createdBy: 'worker2'
   }
 ];
 
+function getCurrentUser(req) {
+  const role = (req.headers['x-user-role'] || 'worker').toString().toLowerCase();
+  const name = (req.headers['x-user-name'] || 'guest').toString().toLowerCase();
+  return {
+    role: ['boss', 'manager', 'worker'].includes(role) ? role : 'worker',
+    name
+  };
+}
+
+function canViewShipment(user, shipment) {
+  if (user.role === 'boss' || user.role === 'manager') return true;
+  return shipment.createdBy === user.name;
+}
+
+function canModifyShipment(user, shipment) {
+  if (user.role === 'boss') return true;
+  return shipment.createdBy === user.name;
+}
+
+function normalizeMoney(value, fallbackValue) {
+  if (value === undefined || value === null || value === '') return fallbackValue;
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? fallbackValue : parsed;
+}
+
 // GET /api/shipments - return all shipments
 app.get('/api/shipments', (req, res) => {
-  res.json(shipments);
+  const user = getCurrentUser(req);
+  const visibleShipments = shipments.filter((shipment) => canViewShipment(user, shipment));
+  res.json(visibleShipments);
 });
 
 // GET /api/shipments/:id - return single shipment by ID
 app.get('/api/shipments/:id', (req, res) => {
+  const user = getCurrentUser(req);
   const { id } = req.params;
   const shipment = shipments.find((s) => s.shipmentId === id);
 
   if (!shipment) {
     return res.status(404).json({ message: 'Shipment not found' });
+  }
+  if (!canViewShipment(user, shipment)) {
+    return res.status(403).json({ message: 'Access denied for this shipment' });
   }
 
   res.json(shipment);
@@ -100,6 +146,7 @@ app.get('/api/shipments/:id', (req, res) => {
 
 // POST /api/shipments - create a new shipment
 app.post('/api/shipments', (req, res) => {
+  const user = getCurrentUser(req);
   const {
     shipmentId,
     productType,
@@ -111,7 +158,9 @@ app.post('/api/shipments', (req, res) => {
     portArrival,
     vesselName,
     shipmentDate,
-    status
+    status,
+    saleAmountUsd,
+    estimatedProfitUsd
   } = req.body;
 
   // Basic required field validation
@@ -167,7 +216,10 @@ app.post('/api/shipments', (req, res) => {
     portArrival,
     vesselName,
     shipmentDate,
-    status
+    status,
+    saleAmountUsd: normalizeMoney(saleAmountUsd, quantityNumber * 240),
+    estimatedProfitUsd: normalizeMoney(estimatedProfitUsd, quantityNumber * 35),
+    createdBy: user.name
   };
 
   shipments.push(newShipment);
@@ -177,11 +229,15 @@ app.post('/api/shipments', (req, res) => {
 
 // PUT /api/shipments/:id - update existing shipment
 app.put('/api/shipments/:id', (req, res) => {
+  const user = getCurrentUser(req);
   const { id } = req.params;
   const shipmentIndex = shipments.findIndex((s) => s.shipmentId === id);
 
   if (shipmentIndex === -1) {
     return res.status(404).json({ message: 'Shipment not found' });
+  }
+  if (!canModifyShipment(user, shipments[shipmentIndex])) {
+    return res.status(403).json({ message: 'You can only modify your own shipments' });
   }
 
   const {
@@ -195,7 +251,9 @@ app.put('/api/shipments/:id', (req, res) => {
     portArrival,
     vesselName,
     shipmentDate,
-    status
+    status,
+    saleAmountUsd,
+    estimatedProfitUsd
   } = req.body;
 
   const requiredFields = [
@@ -249,7 +307,10 @@ app.put('/api/shipments/:id', (req, res) => {
     portArrival,
     vesselName,
     shipmentDate,
-    status
+    status,
+    saleAmountUsd: normalizeMoney(saleAmountUsd, quantityNumber * 240),
+    estimatedProfitUsd: normalizeMoney(estimatedProfitUsd, quantityNumber * 35),
+    createdBy: shipments[shipmentIndex].createdBy
   };
 
   shipments[shipmentIndex] = updatedShipment;
@@ -258,11 +319,15 @@ app.put('/api/shipments/:id', (req, res) => {
 
 // DELETE /api/shipments/:id - remove shipment
 app.delete('/api/shipments/:id', (req, res) => {
+  const user = getCurrentUser(req);
   const { id } = req.params;
   const shipmentIndex = shipments.findIndex((s) => s.shipmentId === id);
 
   if (shipmentIndex === -1) {
     return res.status(404).json({ message: 'Shipment not found' });
+  }
+  if (!canModifyShipment(user, shipments[shipmentIndex])) {
+    return res.status(403).json({ message: 'You can only delete your own shipments' });
   }
 
   shipments.splice(shipmentIndex, 1);
