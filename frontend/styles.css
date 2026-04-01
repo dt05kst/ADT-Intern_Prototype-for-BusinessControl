@@ -42,7 +42,8 @@ body {
 .form-section,
 .table-section,
 .access-section,
-.summary-section {
+.summary-section,
+.auth-section {
   background: #ffffff;
   border: 1px solid #dbe1ea;
   border-radius: 8px;
@@ -137,6 +138,25 @@ h2 {
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px 14px;
+}
+
+.auth-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.auth-card {
+  border: 1px solid #dbe1ea;
+  border-radius: 6px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.auth-card h3 {
+  margin: 0 0 10px;
+  color: #163b66;
+  font-size: 1rem;
 }
 
 .summary-grid {
@@ -277,6 +297,10 @@ th {
   font-size: 1rem;
 }
 
+.hidden {
+  display: none;
+}
+
 @media (min-width: 900px) {
   .form-grid {
     grid-template-columns: 1fr 1fr;
@@ -289,6 +313,10 @@ th {
 
   .summary-grid {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  .auth-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }
 

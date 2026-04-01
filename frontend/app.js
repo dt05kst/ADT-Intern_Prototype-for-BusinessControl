@@ -1,9 +1,9 @@
 // Frontend logic for ADT Partners Shipment Management Prototype
-
 const API_BASE_URL =
   window.location.hostname === 'localhost'
     ? 'http://localhost:3001/api'
     : 'https://adt-intern-prototype-for-businesscontrol.onrender.com/api';
+
 const requiredFields = [
   'shipmentId',
   'productType',
@@ -22,16 +22,17 @@ let allShipments = [];
 let filteredShipments = [];
 let editingShipmentId = null;
 let currentSort = { field: null, direction: 'asc' };
-let currentUser = {
-  role: localStorage.getItem('adtRole') || 'manager',
-  name: localStorage.getItem('adtUserName') || 'manager1'
-};
+let authToken = localStorage.getItem('adtAuthToken') || '';
+let currentUser = JSON.parse(localStorage.getItem('adtCurrentUser') || 'null');
 
-function getAuthHeaders() {
-  return {
-    'x-user-role': currentUser.role,
-    'x-user-name': currentUser.name
-  };
+function showMessage(text, type = 'info') {
+  const messageDiv = document.getElementById('message');
+  messageDiv.textContent = text;
+  messageDiv.className = `message ${type}`;
+  setTimeout(() => {
+    messageDiv.textContent = '';
+    messageDiv.className = 'message';
+  }, 3500);
 }
 
 function formatMoney(value) {
@@ -39,16 +40,15 @@ function formatMoney(value) {
   return `$${number.toLocaleString()}`;
 }
 
-// Show top message box and auto-hide it
-function showMessage(text, type = 'info') {
-  const messageDiv = document.getElementById('message');
-  messageDiv.textContent = text;
-  messageDiv.className = `message ${type}`;
-
-  setTimeout(() => {
-    messageDiv.textContent = '';
-    messageDiv.className = 'message';
-  }, 3500);
+function apiFetch(path, options = {}) {
+  const headers = options.headers || {};
+  return fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      ...headers,
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+    }
+  });
 }
 
 function clearInlineErrors() {
@@ -66,20 +66,36 @@ function showInlineError(field, text) {
 function validateForm(payload) {
   clearInlineErrors();
   let valid = true;
-
   requiredFields.forEach((field) => {
     if (!payload[field] || payload[field].toString().trim() === '') {
       showInlineError(field, 'This field is required.');
       valid = false;
     }
   });
-
   if (payload.quantityTons && Number(payload.quantityTons) <= 0) {
     showInlineError('quantityTons', 'Quantity must be greater than 0.');
     valid = false;
   }
-
   return valid;
+}
+
+function setAuthView(isLoggedIn) {
+  document.getElementById('auth-section').classList.toggle('hidden', isLoggedIn);
+  document.getElementById('app-shell').classList.toggle('hidden', !isLoggedIn);
+  if (isLoggedIn && currentUser) {
+    document.getElementById('current-username').value = currentUser.username;
+    document.getElementById('current-role').value = currentUser.role;
+    document.getElementById('boss-section').classList.toggle('hidden', currentUser.role !== 'boss');
+  }
+}
+
+function logout() {
+  authToken = '';
+  currentUser = null;
+  localStorage.removeItem('adtAuthToken');
+  localStorage.removeItem('adtCurrentUser');
+  setAuthView(false);
+  showMessage('Logged out.', 'info');
 }
 
 function getStatusClass(status) {
@@ -94,45 +110,57 @@ function getProductIcon(productType) {
   const value = (productType || '').toLowerCase();
   if (value.includes('corn')) return '🌽';
   if (value.includes('barley')) return '🌱';
-  if (value.includes('wheat')) return '🌾';
   return '🌾';
 }
 
 function canModifyRow(shipment) {
+  if (!currentUser) return false;
   if (currentUser.role === 'boss') return true;
-  return shipment.createdBy === currentUser.name;
+  return shipment.createdBy === currentUser.username;
 }
 
-// fetchShipments(): get data from backend and render
+async function fetchBossOverall() {
+  if (!currentUser || currentUser.role !== 'boss') return;
+  const response = await apiFetch('/analytics/overall');
+  if (!response.ok) return;
+  const data = await response.json();
+  document.getElementById('boss-total-shipments').textContent = data.totalShipments;
+  document.getElementById('boss-total-sales').textContent = formatMoney(data.totalSalesUsd);
+  document.getElementById('boss-total-profit').textContent = formatMoney(data.totalProfitUsd);
+}
+
 async function fetchShipments() {
   const loadingEl = document.getElementById('loading-text');
   loadingEl.style.display = 'block';
-
   try {
-    const response = await fetch(`${API_BASE_URL}/shipments`, {
-      headers: getAuthHeaders()
-    });
+    const response = await apiFetch('/shipments');
     if (!response.ok) throw new Error('Failed to fetch shipments');
-
     allShipments = await response.json();
     applyFilterAndSort();
+    await fetchBossOverall();
   } catch (error) {
-    console.error(error);
     showMessage('Could not load shipments. Check backend server.', 'error');
   } finally {
     loadingEl.style.display = 'none';
   }
 }
 
-// renderTable(): draw all table rows
+function updateSummary(shipments) {
+  const totalSales = shipments.reduce((sum, s) => sum + Number(s.saleAmountUsd || 0), 0);
+  const totalProfit = shipments.reduce((sum, s) => sum + Number(s.estimatedProfitUsd || 0), 0);
+  document.getElementById('summary-count').textContent = shipments.length.toString();
+  document.getElementById('summary-sales').textContent = formatMoney(totalSales);
+  document.getElementById('summary-profit').textContent = formatMoney(totalProfit);
+}
+
 function renderTable(shipments) {
   const tbody = document.getElementById('shipments-body');
   tbody.innerHTML = '';
-
   if (shipments.length === 0) {
     const tr = document.createElement('tr');
     tr.innerHTML = '<td colspan="17">No shipments found.</td>';
     tbody.appendChild(tr);
+    updateSummary([]);
     return;
   }
 
@@ -140,7 +168,6 @@ function renderTable(shipments) {
     const statusClass = getStatusClass(shipment.status);
     const editable = canModifyRow(shipment);
     const tr = document.createElement('tr');
-
     tr.innerHTML = `
       <td>${shipment.shipmentId}</td>
       <td>${shipment.createdBy || '-'}</td>
@@ -160,7 +187,6 @@ function renderTable(shipments) {
       <td><button class="row-button edit-button" data-id="${shipment.shipmentId}" ${editable ? '' : 'disabled'}>Edit</button></td>
       <td><button class="row-button delete-button" data-id="${shipment.shipmentId}" ${editable ? '' : 'disabled'}>Delete</button></td>
     `;
-
     tbody.appendChild(tr);
   });
 
@@ -168,42 +194,29 @@ function renderTable(shipments) {
   bindRowActionButtons();
 }
 
-function updateSummary(shipments) {
-  const totalSales = shipments.reduce((sum, s) => sum + Number(s.saleAmountUsd || 0), 0);
-  const totalProfit = shipments.reduce((sum, s) => sum + Number(s.estimatedProfitUsd || 0), 0);
-
-  document.getElementById('summary-count').textContent = shipments.length.toString();
-  document.getElementById('summary-sales').textContent = formatMoney(totalSales);
-  document.getElementById('summary-profit').textContent = formatMoney(totalProfit);
-}
-
 function applyFilterAndSort() {
   const query = document.getElementById('search-input').value.trim().toLowerCase();
-
-  filteredShipments = allShipments.filter((shipment) => {
-    return (
-      shipment.destinationCountry.toLowerCase().includes(query) ||
-      shipment.productType.toLowerCase().includes(query) ||
-      shipment.vesselName.toLowerCase().includes(query)
-    );
-  });
+  filteredShipments = allShipments.filter(
+    (s) =>
+      s.destinationCountry.toLowerCase().includes(query) ||
+      s.productType.toLowerCase().includes(query) ||
+      s.vesselName.toLowerCase().includes(query)
+  );
 
   if (currentSort.field === 'shipmentDate') {
-    filteredShipments.sort((a, b) => {
-      const dateA = new Date(a.shipmentDate);
-      const dateB = new Date(b.shipmentDate);
-      return currentSort.direction === 'asc' ? dateA - dateB : dateB - dateA;
-    });
+    filteredShipments.sort((a, b) =>
+      currentSort.direction === 'asc'
+        ? new Date(a.shipmentDate) - new Date(b.shipmentDate)
+        : new Date(b.shipmentDate) - new Date(a.shipmentDate)
+    );
   }
-
   if (currentSort.field === 'quantityTons') {
-    filteredShipments.sort((a, b) => {
-      return currentSort.direction === 'asc'
+    filteredShipments.sort((a, b) =>
+      currentSort.direction === 'asc'
         ? Number(a.quantityTons) - Number(b.quantityTons)
-        : Number(b.quantityTons) - Number(a.quantityTons);
-    });
+        : Number(b.quantityTons) - Number(a.quantityTons)
+    );
   }
-
   renderTable(filteredShipments);
 }
 
@@ -211,8 +224,7 @@ function toggleSort(field) {
   if (currentSort.field === field) {
     currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
   } else {
-    currentSort.field = field;
-    currentSort.direction = 'asc';
+    currentSort = { field, direction: 'asc' };
   }
   applyFilterAndSort();
 }
@@ -240,72 +252,43 @@ function resetFormState() {
   clearInlineErrors();
 }
 
-// handleEdit(): populate form from selected row
 async function handleEdit(id) {
-  try {
-    const response = await fetch(`${API_BASE_URL}/shipments/${id}`, {
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) {
-      showMessage('Could not load shipment for editing.', 'error');
-      return;
-    }
-
-    const shipment = await response.json();
-    setFormData(shipment);
-    editingShipmentId = id;
-    document.getElementById('submit-button').textContent = 'Update Shipment';
-    showMessage(`Editing shipment ${id}`, 'info');
-  } catch (error) {
-    console.error(error);
-    showMessage('Failed to enter edit mode.', 'error');
+  const response = await apiFetch(`/shipments/${id}`);
+  if (!response.ok) {
+    showMessage('Could not load shipment for editing.', 'error');
+    return;
   }
+  const shipment = await response.json();
+  setFormData(shipment);
+  editingShipmentId = id;
+  document.getElementById('submit-button').textContent = 'Update Shipment';
+  showMessage(`Editing shipment ${id}`, 'info');
 }
 
-// handleDelete(): confirm and remove shipment
 async function handleDelete(id) {
-  const confirmed = window.confirm(`Delete shipment ${id}?`);
-  if (!confirmed) return;
-
-  try {
-    const response = await fetch(`${API_BASE_URL}/shipments/${id}`, {
-      method: 'DELETE',
-      headers: getAuthHeaders()
-    });
-    if (!response.ok) {
-      showMessage('Failed to delete shipment.', 'error');
-      return;
-    }
-
-    if (editingShipmentId === id) resetFormState();
-    showMessage('Shipment deleted.', 'info');
-    await fetchShipments();
-  } catch (error) {
-    console.error(error);
-    showMessage('Network error while deleting shipment.', 'error');
+  if (!window.confirm(`Delete shipment ${id}?`)) return;
+  const response = await apiFetch(`/shipments/${id}`, { method: 'DELETE' });
+  if (!response.ok) {
+    showMessage('Failed to delete shipment.', 'error');
+    return;
   }
+  if (editingShipmentId === id) resetFormState();
+  showMessage('Shipment deleted.', 'info');
+  await fetchShipments();
 }
 
 function bindRowActionButtons() {
-  const editButtons = document.querySelectorAll('.edit-button');
-  const deleteButtons = document.querySelectorAll('.delete-button');
-
-  editButtons.forEach((button) => {
+  document.querySelectorAll('.edit-button').forEach((button) => {
     button.addEventListener('click', () => handleEdit(button.dataset.id));
   });
-
-  deleteButtons.forEach((button) => {
+  document.querySelectorAll('.delete-button').forEach((button) => {
     button.addEventListener('click', () => handleDelete(button.dataset.id));
   });
 }
 
-// handleSubmit(): create or update shipment
 async function handleSubmit(event) {
   event.preventDefault();
-
-  const formData = new FormData(event.target);
-  const payload = Object.fromEntries(formData.entries());
-
+  const payload = Object.fromEntries(new FormData(event.target).entries());
   if (!validateForm(payload)) {
     showMessage('Please correct form errors.', 'error');
     return;
@@ -313,64 +296,77 @@ async function handleSubmit(event) {
 
   payload.quantityTons = Number(payload.quantityTons);
   const isEditing = editingShipmentId !== null;
-  const requestUrl = isEditing
-    ? `${API_BASE_URL}/shipments/${editingShipmentId}`
-    : `${API_BASE_URL}/shipments`;
-  const method = isEditing ? 'PUT' : 'POST';
-
-  try {
-    const response = await fetch(requestUrl, {
-      method,
-      headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-      body: JSON.stringify(payload)
-    });
-
-    if (response.status === 409) {
-      showInlineError('shipmentId', 'Shipment ID already exists.');
-      showMessage('Duplicate ID error.', 'error');
-      return;
-    }
-
-    if (response.status === 400) {
-      showMessage('Invalid data. Check required fields.', 'error');
-      return;
-    }
-
-    if (!response.ok) {
-      showMessage('Could not save shipment.', 'error');
-      return;
-    }
-
-    resetFormState();
-    showMessage(isEditing ? 'Shipment updated.' : 'Shipment added successfully.', 'info');
-    await fetchShipments();
-  } catch (error) {
-    console.error(error);
-    showMessage('Network error. Please check backend server.', 'error');
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('role-select').value = currentUser.role;
-  document.getElementById('username-input').value = currentUser.name;
-  document.getElementById('apply-user-button').addEventListener('click', () => {
-    const role = document.getElementById('role-select').value;
-    const name = document.getElementById('username-input').value.trim().toLowerCase() || 'guest';
-    currentUser = { role, name };
-
-    localStorage.setItem('adtRole', role);
-    localStorage.setItem('adtUserName', name);
-
-    resetFormState();
-    showMessage(`Access applied: ${role} (${name})`, 'info');
-    fetchShipments();
+  const response = await apiFetch(isEditing ? `/shipments/${editingShipmentId}` : '/shipments', {
+    method: isEditing ? 'PUT' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
   });
 
+  if (response.status === 409) {
+    showInlineError('shipmentId', 'Shipment ID already exists.');
+    showMessage('Duplicate ID error.', 'error');
+    return;
+  }
+  if (!response.ok) {
+    showMessage('Could not save shipment.', 'error');
+    return;
+  }
+
+  resetFormState();
+  showMessage(isEditing ? 'Shipment updated.' : 'Shipment added successfully.', 'info');
+  await fetchShipments();
+}
+
+async function handleLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password })
+  });
+  if (!response.ok) {
+    showMessage('Login failed. Check username/password.', 'error');
+    return;
+  }
+  const data = await response.json();
+  authToken = data.token;
+  currentUser = data.user;
+  localStorage.setItem('adtAuthToken', authToken);
+  localStorage.setItem('adtCurrentUser', JSON.stringify(currentUser));
+  setAuthView(true);
+  showMessage(`Welcome ${currentUser.username}`, 'info');
+  await fetchShipments();
+}
+
+async function handleSignUp() {
+  const username = document.getElementById('signup-username').value.trim();
+  const password = document.getElementById('signup-password').value;
+  const role = document.getElementById('signup-role').value;
+  const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password, role })
+  });
+  if (!response.ok) {
+    showMessage('Sign-up failed (username may already exist).', 'error');
+    return;
+  }
+  showMessage('Account created. Now login.', 'info');
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('login-button').addEventListener('click', handleLogin);
+  document.getElementById('signup-button').addEventListener('click', handleSignUp);
+  document.getElementById('logout-button').addEventListener('click', logout);
   document.getElementById('shipment-form').addEventListener('submit', handleSubmit);
   document.getElementById('search-input').addEventListener('input', applyFilterAndSort);
   document.getElementById('sort-date').addEventListener('click', () => toggleSort('shipmentDate'));
   document.getElementById('sort-quantity').addEventListener('click', () => toggleSort('quantityTons'));
 
-  fetchShipments();
+  setAuthView(Boolean(authToken && currentUser));
+  if (authToken && currentUser) {
+    await fetchShipments();
+  }
 });
 

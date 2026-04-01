@@ -96,6 +96,42 @@ let shipments = [
   }
 ];
 
+// In-memory users and sessions (prototype only, no database)
+let users = [
+  { username: 'boss1', password: 'boss123', role: 'boss' },
+  { username: 'manager1', password: 'manager123', role: 'manager' },
+  { username: 'manager2', password: 'manager123', role: 'manager' },
+  { username: 'worker1', password: 'worker123', role: 'worker' },
+  { username: 'worker2', password: 'worker123', role: 'worker' }
+];
+
+let sessions = [];
+
+function createSessionToken() {
+  return `sess_${Math.random().toString(36).slice(2)}_${Date.now().toString(36)}`;
+}
+
+function getSessionByToken(token) {
+  return sessions.find((session) => session.token === token);
+}
+
+function authMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!token) {
+    return res.status(401).json({ message: 'Missing auth token' });
+  }
+
+  const session = getSessionByToken(token);
+  if (!session) {
+    return res.status(401).json({ message: 'Invalid or expired session' });
+  }
+
+  req.user = { role: session.role, name: session.username };
+  next();
+}
+
 function getCurrentUser(req) {
   const role = (req.headers['x-user-role'] || 'worker').toString().toLowerCase();
   const name = (req.headers['x-user-name'] || 'guest').toString().toLowerCase();
@@ -121,16 +157,78 @@ function normalizeMoney(value, fallbackValue) {
   return Number.isNaN(parsed) ? fallbackValue : parsed;
 }
 
+// AUTH: Sign up
+app.post('/api/auth/signup', (req, res) => {
+  const { username, password, role } = req.body;
+
+  if (!username || !password || !role) {
+    return res.status(400).json({ message: 'username, password and role are required' });
+  }
+
+  const normalizedRole = role.toLowerCase();
+  if (!['boss', 'manager', 'worker'].includes(normalizedRole)) {
+    return res.status(400).json({ message: 'Invalid role' });
+  }
+
+  const normalizedUserName = username.toLowerCase();
+  const exists = users.find((user) => user.username === normalizedUserName);
+  if (exists) {
+    return res.status(409).json({ message: 'Username already exists' });
+  }
+
+  users.push({
+    username: normalizedUserName,
+    password,
+    role: normalizedRole
+  });
+
+  res.status(201).json({ message: 'User created successfully' });
+});
+
+// AUTH: Login
+app.post('/api/auth/login', (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ message: 'username and password are required' });
+  }
+
+  const normalizedUserName = username.toLowerCase();
+  const user = users.find(
+    (existingUser) => existingUser.username === normalizedUserName && existingUser.password === password
+  );
+
+  if (!user) {
+    return res.status(401).json({ message: 'Invalid credentials' });
+  }
+
+  const token = createSessionToken();
+  sessions.push({
+    token,
+    username: user.username,
+    role: user.role,
+    createdAt: new Date().toISOString()
+  });
+
+  res.json({
+    token,
+    user: {
+      username: user.username,
+      role: user.role
+    }
+  });
+});
+
 // GET /api/shipments - return all shipments
-app.get('/api/shipments', (req, res) => {
-  const user = getCurrentUser(req);
+app.get('/api/shipments', authMiddleware, (req, res) => {
+  const user = req.user;
   const visibleShipments = shipments.filter((shipment) => canViewShipment(user, shipment));
   res.json(visibleShipments);
 });
 
 // GET /api/shipments/:id - return single shipment by ID
-app.get('/api/shipments/:id', (req, res) => {
-  const user = getCurrentUser(req);
+app.get('/api/shipments/:id', authMiddleware, (req, res) => {
+  const user = req.user;
   const { id } = req.params;
   const shipment = shipments.find((s) => s.shipmentId === id);
 
@@ -145,8 +243,8 @@ app.get('/api/shipments/:id', (req, res) => {
 });
 
 // POST /api/shipments - create a new shipment
-app.post('/api/shipments', (req, res) => {
-  const user = getCurrentUser(req);
+app.post('/api/shipments', authMiddleware, (req, res) => {
+  const user = req.user;
   const {
     shipmentId,
     productType,
@@ -228,8 +326,8 @@ app.post('/api/shipments', (req, res) => {
 });
 
 // PUT /api/shipments/:id - update existing shipment
-app.put('/api/shipments/:id', (req, res) => {
-  const user = getCurrentUser(req);
+app.put('/api/shipments/:id', authMiddleware, (req, res) => {
+  const user = req.user;
   const { id } = req.params;
   const shipmentIndex = shipments.findIndex((s) => s.shipmentId === id);
 
@@ -318,8 +416,8 @@ app.put('/api/shipments/:id', (req, res) => {
 });
 
 // DELETE /api/shipments/:id - remove shipment
-app.delete('/api/shipments/:id', (req, res) => {
-  const user = getCurrentUser(req);
+app.delete('/api/shipments/:id', authMiddleware, (req, res) => {
+  const user = req.user;
   const { id } = req.params;
   const shipmentIndex = shipments.findIndex((s) => s.shipmentId === id);
 
@@ -332,6 +430,27 @@ app.delete('/api/shipments/:id', (req, res) => {
 
   shipments.splice(shipmentIndex, 1);
   res.json({ message: 'Shipment deleted successfully' });
+});
+
+// Boss-only: overall company totals
+app.get('/api/analytics/overall', authMiddleware, (req, res) => {
+  const user = req.user;
+  if (user.role !== 'boss') {
+    return res.status(403).json({ message: 'Only boss can access overall analytics' });
+  }
+
+  const totalShipments = shipments.length;
+  const totalSalesUsd = shipments.reduce((sum, shipment) => sum + Number(shipment.saleAmountUsd || 0), 0);
+  const totalProfitUsd = shipments.reduce(
+    (sum, shipment) => sum + Number(shipment.estimatedProfitUsd || 0),
+    0
+  );
+
+  res.json({
+    totalShipments,
+    totalSalesUsd,
+    totalProfitUsd
+  });
 });
 
 // Start server

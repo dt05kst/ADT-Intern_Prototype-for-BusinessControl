@@ -16,23 +16,63 @@
     <main class="page-container">
       <div id="message" class="message" role="status"></div>
 
+      <section id="auth-section" class="auth-section">
+        <h2>Login / Sign Up</h2>
+        <div class="auth-grid">
+          <div class="auth-card">
+            <h3>Login</h3>
+            <div class="form-row">
+              <label for="login-username">Username</label>
+              <input id="login-username" type="text" placeholder="e.g. manager1" />
+            </div>
+            <div class="form-row">
+              <label for="login-password">Password</label>
+              <input id="login-password" type="password" placeholder="Enter password" />
+            </div>
+            <div class="form-actions">
+              <button id="login-button" type="button">Login</button>
+            </div>
+          </div>
+
+          <div class="auth-card">
+            <h3>Sign Up</h3>
+            <div class="form-row">
+              <label for="signup-username">Username</label>
+              <input id="signup-username" type="text" placeholder="Create username" />
+            </div>
+            <div class="form-row">
+              <label for="signup-password">Password</label>
+              <input id="signup-password" type="password" placeholder="Create password" />
+            </div>
+            <div class="form-row">
+              <label for="signup-role">Role</label>
+              <select id="signup-role">
+                <option value="worker">Worker</option>
+                <option value="manager">Manager</option>
+                <option value="boss">Boss</option>
+              </select>
+            </div>
+            <div class="form-actions">
+              <button id="signup-button" type="button">Create Account</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div id="app-shell" class="hidden">
       <section class="access-section">
-        <h2>User Access (Prototype)</h2>
+        <h2>Current User</h2>
         <div class="access-grid">
           <div class="form-row">
-            <label for="role-select">Role</label>
-            <select id="role-select">
-              <option value="boss">Boss</option>
-              <option value="manager" selected>Manager</option>
-              <option value="worker">Worker</option>
-            </select>
+            <label>Username</label>
+            <input id="current-username" type="text" disabled />
           </div>
           <div class="form-row">
-            <label for="username-input">Username</label>
-            <input id="username-input" type="text" placeholder="e.g. manager1" value="manager1" />
+            <label>Role</label>
+            <input id="current-role" type="text" disabled />
           </div>
           <div class="form-actions">
-            <button id="apply-user-button" type="button">Apply User</button>
+            <button id="logout-button" type="button">Logout</button>
           </div>
         </div>
       </section>
@@ -51,6 +91,24 @@
           <div class="summary-card">
             <p>Estimated Profit (USD)</p>
             <strong id="summary-profit">$0</strong>
+          </div>
+        </div>
+      </section>
+
+      <section id="boss-section" class="summary-section hidden">
+        <h2>Boss Overview (Overall Company)</h2>
+        <div class="summary-grid">
+          <div class="summary-card">
+            <p>Overall Shipments</p>
+            <strong id="boss-total-shipments">0</strong>
+          </div>
+          <div class="summary-card">
+            <p>Overall Sales (USD)</p>
+            <strong id="boss-total-sales">$0</strong>
+          </div>
+          <div class="summary-card">
+            <p>Overall Profit (USD)</p>
+            <strong id="boss-total-profit">$0</strong>
           </div>
         </div>
       </section>
@@ -201,6 +259,7 @@
           </table>
         </div>
       </section>
+      </div>
     </main>
 
     <script src="app.js"></script>
