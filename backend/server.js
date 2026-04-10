@@ -6,11 +6,22 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Enable CORS for all origins (simple for prototype)
-app.use(cors());
+// CORS: allow Netlify + local dev; browsers send preflight for Authorization header
+app.use(
+  cors({
+    origin: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-user-role', 'x-user-name']
+  })
+);
 
 // Parse JSON request bodies
 app.use(express.json());
+
+// Simple health check (useful when Render wakes up)
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true, service: 'adt-shipment-api' });
+});
 
 // In-memory shipment data store (prototype only)
 let shipments = [

@@ -40,6 +40,13 @@ function formatMoney(value) {
   return `$${number.toLocaleString()}`;
 }
 
+function clearStaleAuth() {
+  authToken = '';
+  currentUser = null;
+  localStorage.removeItem('adtAuthToken');
+  localStorage.removeItem('adtCurrentUser');
+}
+
 function apiFetch(path, options = {}) {
   const headers = options.headers || {};
   return fetch(`${API_BASE_URL}${path}`, {
@@ -49,22 +56,21 @@ function apiFetch(path, options = {}) {
       ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
     }
   }).then(async (response) => {
-    // If saved token is stale (e.g., server restarted), clear it and retry once in demo mode.
+    // Stale session after Render restart: retry without token (demo fallback).
     if (response.status === 401 && authToken) {
-      authToken = '';
-      currentUser = null;
-      localStorage.removeItem('adtAuthToken');
-      localStorage.removeItem('adtCurrentUser');
-
+      clearStaleAuth();
+      if (typeof setAuthView === 'function') setAuthView(false);
       return fetch(`${API_BASE_URL}${path}`, {
         ...options,
-        headers: {
-          ...headers
-        }
+        headers: { ...headers }
       });
     }
     return response;
   });
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function clearInlineErrors() {
@@ -147,18 +153,41 @@ async function fetchBossOverall() {
 
 async function fetchShipments() {
   const loadingEl = document.getElementById('loading-text');
-  loadingEl.style.display = 'block';
-  try {
-    const response = await apiFetch('/shipments');
-    if (!response.ok) throw new Error('Failed to fetch shipments');
-    allShipments = await response.json();
-    applyFilterAndSort();
-    await fetchBossOverall();
-  } catch (error) {
-    showMessage('Could not load shipments. Check backend server.', 'error');
-  } finally {
-    loadingEl.style.display = 'none';
+  if (loadingEl) loadingEl.style.display = 'block';
+
+  const maxAttempts = 4;
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const response = await apiFetch('/shipments');
+
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        lastError = new Error(`HTTP ${response.status} ${text.slice(0, 120)}`);
+        await sleep(1500 * attempt);
+        continue;
+      }
+
+      allShipments = await response.json();
+      applyFilterAndSort();
+      await fetchBossOverall();
+      lastError = null;
+      break;
+    } catch (error) {
+      lastError = error;
+      await sleep(1500 * attempt);
+    }
   }
+
+  if (lastError) {
+    showMessage(
+      'Could not load shipments. Open /api/health on Render to wake the server, then refresh. (Render free tier may sleep.)',
+      'error'
+    );
+  }
+
+  if (loadingEl) loadingEl.style.display = 'none';
 }
 
 function updateSummary(shipments) {
