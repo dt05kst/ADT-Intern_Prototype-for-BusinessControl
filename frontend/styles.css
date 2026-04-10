@@ -33,6 +33,90 @@ body {
   opacity: 0.92;
 }
 
+/* Sticky demo controls + metrics in header (always visible) */
+.header-dashboard {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.header-dashboard-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  font-size: 0.82rem;
+}
+
+.header-dashboard-label {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.header-input {
+  min-width: 120px;
+  max-width: 160px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.95);
+  color: #1f2937;
+  font-size: 0.82rem;
+}
+
+.header-select {
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.95);
+  color: #1f2937;
+  font-size: 0.82rem;
+}
+
+.header-btn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: none;
+  background: #1d4ed8;
+  color: #fff;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.header-btn:hover {
+  background: #2563eb;
+}
+
+.header-btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #fff;
+}
+
+.header-metrics strong,
+.header-boss strong {
+  color: #fff;
+}
+
+.header-metrics span,
+.header-boss span {
+  opacity: 0.95;
+}
+
+.header-boss {
+  background: rgba(0, 0, 0, 0.15);
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.header-boss-label {
+  font-weight: 700;
+  margin-right: 6px;
+}
+
 .page-container {
   max-width: 1200px;
   margin: 24px auto;

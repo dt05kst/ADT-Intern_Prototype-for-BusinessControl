@@ -3,13 +3,45 @@
   <head>
     <meta charset="UTF-8" />
     <title>ADT Partners – Shipment Management Prototype</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=5" />
   </head>
   <body>
     <header class="top-bar">
       <div class="top-bar-content">
         <h1>ADT Partners Internal System</h1>
         <p>Shipment Management Module</p>
+
+        <!-- Always visible: demo role + metrics (no scrolling needed) -->
+        <div class="header-dashboard">
+          <div class="header-dashboard-row">
+            <span class="header-dashboard-label">Demo user</span>
+            <input
+              id="current-username"
+              class="header-input"
+              type="text"
+              placeholder="e.g. bolat85"
+              title="Try: bolat85 (boss), yerzhan95 (manager), alikhan05 (worker)"
+            />
+            <select id="current-role" class="header-select" title="Switch role for permissions">
+              <option value="boss">Boss</option>
+              <option value="manager" selected>Manager</option>
+              <option value="worker">Worker</option>
+            </select>
+            <button id="apply-demo-user-button" type="button" class="header-btn">Apply role</button>
+            <button id="logout-button" type="button" class="header-btn header-btn-ghost">Logout</button>
+          </div>
+          <div class="header-dashboard-row header-metrics">
+            <span>Visible: <strong id="summary-count">0</strong></span>
+            <span>Sales: <strong id="summary-sales">$0</strong></span>
+            <span>Profit: <strong id="summary-profit">$0</strong></span>
+          </div>
+          <div id="boss-section" class="header-dashboard-row header-boss hidden">
+            <span class="header-boss-label">Boss (all company)</span>
+            <span>Shipments: <strong id="boss-total-shipments">0</strong></span>
+            <span>Sales: <strong id="boss-total-sales">$0</strong></span>
+            <span>Profit: <strong id="boss-total-profit">$0</strong></span>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -60,64 +92,6 @@
       </section>
 
       <div id="app-shell" class="hidden">
-      <section class="access-section">
-        <h2>Current User / Demo Role Switch</h2>
-        <div class="access-grid">
-          <div class="form-row">
-            <label>Username</label>
-            <input id="current-username" type="text" />
-          </div>
-          <div class="form-row">
-            <label>Role</label>
-            <select id="current-role">
-              <option value="boss">Boss</option>
-              <option value="manager">Manager</option>
-              <option value="worker">Worker</option>
-            </select>
-          </div>
-          <div class="form-actions">
-            <button id="apply-demo-user-button" type="button">Apply Role</button>
-            <button id="logout-button" type="button">Logout</button>
-          </div>
-        </div>
-      </section>
-
-      <section class="summary-section">
-        <h2>Overview</h2>
-        <div class="summary-grid">
-          <div class="summary-card">
-            <p>Total Visible Shipments</p>
-            <strong id="summary-count">0</strong>
-          </div>
-          <div class="summary-card">
-            <p>Total Sales (USD)</p>
-            <strong id="summary-sales">$0</strong>
-          </div>
-          <div class="summary-card">
-            <p>Estimated Profit (USD)</p>
-            <strong id="summary-profit">$0</strong>
-          </div>
-        </div>
-      </section>
-
-      <section id="boss-section" class="summary-section hidden">
-        <h2>Boss Overview (Overall Company)</h2>
-        <div class="summary-grid">
-          <div class="summary-card">
-            <p>Overall Shipments</p>
-            <strong id="boss-total-shipments">0</strong>
-          </div>
-          <div class="summary-card">
-            <p>Overall Sales (USD)</p>
-            <strong id="boss-total-sales">$0</strong>
-          </div>
-          <div class="summary-card">
-            <p>Overall Profit (USD)</p>
-            <strong id="boss-total-profit">$0</strong>
-          </div>
-        </div>
-      </section>
-
       <section class="form-section">
         <h2>Shipment Form</h2>
         <form id="shipment-form" novalidate>
@@ -267,7 +241,7 @@
       </div>
     </main>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=5"></script>
   </body>
 </html>
 
