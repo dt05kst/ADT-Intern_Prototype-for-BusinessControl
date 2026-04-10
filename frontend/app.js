@@ -23,7 +23,10 @@ let filteredShipments = [];
 let editingShipmentId = null;
 let currentSort = { field: null, direction: 'asc' };
 let authToken = localStorage.getItem('adtAuthToken') || '';
-let currentUser = JSON.parse(localStorage.getItem('adtCurrentUser') || 'null');
+let currentUser = JSON.parse(localStorage.getItem('adtCurrentUser') || 'null') || {
+  username: 'yerzhan95',
+  role: 'manager'
+};
 
 function showMessage(text, type = 'info') {
   const messageDiv = document.getElementById('message');
@@ -53,6 +56,12 @@ function apiFetch(path, options = {}) {
     ...options,
     headers: {
       ...headers,
+      ...(currentUser
+        ? {
+            'x-user-role': currentUser.role,
+            'x-user-name': currentUser.username
+          }
+        : {}),
       ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
     }
   }).then(async (response) => {
@@ -113,11 +122,12 @@ function setAuthView(isLoggedIn) {
 
 function logout() {
   authToken = '';
-  currentUser = null;
+  currentUser = { username: 'yerzhan95', role: 'manager' };
   localStorage.removeItem('adtAuthToken');
-  localStorage.removeItem('adtCurrentUser');
-  setAuthView(false);
-  showMessage('Logged out.', 'info');
+  localStorage.setItem('adtCurrentUser', JSON.stringify(currentUser));
+  setAuthView(true);
+  showMessage('Logged out. Switched to demo mode (manager).', 'info');
+  fetchShipments();
 }
 
 function getStatusClass(status) {
@@ -408,10 +418,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('search-input').addEventListener('input', applyFilterAndSort);
   document.getElementById('sort-date').addEventListener('click', () => toggleSort('shipmentDate'));
   document.getElementById('sort-quantity').addEventListener('click', () => toggleSort('quantityTons'));
+  document.getElementById('apply-demo-user-button').addEventListener('click', async () => {
+    const username = document.getElementById('current-username').value.trim().toLowerCase();
+    const role = document.getElementById('current-role').value;
 
-  setAuthView(Boolean(authToken && currentUser));
-  if (authToken && currentUser) {
+    if (!username) {
+      showMessage('Enter username for demo role switch.', 'error');
+      return;
+    }
+
+    currentUser = { username, role };
+    localStorage.setItem('adtCurrentUser', JSON.stringify(currentUser));
+    showMessage(`Demo role applied: ${role} (${username})`, 'info');
+    resetFormState();
     await fetchShipments();
-  }
+  });
+  // Always show app shell for reliable demo. Login remains optional.
+  setAuthView(true);
+  await fetchShipments();
 });
 

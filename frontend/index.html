@@ -61,17 +61,22 @@
 
       <div id="app-shell" class="hidden">
       <section class="access-section">
-        <h2>Current User</h2>
+        <h2>Current User / Demo Role Switch</h2>
         <div class="access-grid">
           <div class="form-row">
             <label>Username</label>
-            <input id="current-username" type="text" disabled />
+            <input id="current-username" type="text" />
           </div>
           <div class="form-row">
             <label>Role</label>
-            <input id="current-role" type="text" disabled />
+            <select id="current-role">
+              <option value="boss">Boss</option>
+              <option value="manager">Manager</option>
+              <option value="worker">Worker</option>
+            </select>
           </div>
           <div class="form-actions">
+            <button id="apply-demo-user-button" type="button">Apply Role</button>
             <button id="logout-button" type="button">Logout</button>
           </div>
         </div>
