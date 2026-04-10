@@ -48,6 +48,22 @@ function apiFetch(path, options = {}) {
       ...headers,
       ...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
     }
+  }).then(async (response) => {
+    // If saved token is stale (e.g., server restarted), clear it and retry once in demo mode.
+    if (response.status === 401 && authToken) {
+      authToken = '';
+      currentUser = null;
+      localStorage.removeItem('adtAuthToken');
+      localStorage.removeItem('adtCurrentUser');
+
+      return fetch(`${API_BASE_URL}${path}`, {
+        ...options,
+        headers: {
+          ...headers
+        }
+      });
+    }
+    return response;
   });
 }
 

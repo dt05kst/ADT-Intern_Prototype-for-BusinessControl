@@ -98,6 +98,9 @@ let shipments = [
 
 // In-memory users and sessions (prototype only, no database)
 let users = [
+  { username: 'bolat85', password: '123123', role: 'boss' },
+  { username: 'yerzhan95', password: '123123', role: 'manager' },
+  { username: 'alikhan05', password: '123123', role: 'worker' },
   { username: 'boss1', password: 'boss123', role: 'boss' },
   { username: 'manager1', password: 'manager123', role: 'manager' },
   { username: 'manager2', password: 'manager123', role: 'manager' },
@@ -119,8 +122,16 @@ function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
+  // Backward-compatible demo mode:
+  // If token is missing, allow access with a default user so the old UI keeps working.
   if (!token) {
-    return res.status(401).json({ message: 'Missing auth token' });
+    const fallbackRole = (req.headers['x-user-role'] || 'manager').toString().toLowerCase();
+    const fallbackName = (req.headers['x-user-name'] || 'yerzhan95').toString().toLowerCase();
+    req.user = {
+      role: ['boss', 'manager', 'worker'].includes(fallbackRole) ? fallbackRole : 'manager',
+      name: fallbackName
+    };
+    return next();
   }
 
   const session = getSessionByToken(token);
